@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>急救調派系統</title>
+  <style>
+    body { font-family: Arial; background: #f4f4f4; margin: 20px; }
+    h1 { text-align: center; color: #d32f2f; }
+    .section { background: #fff; padding: 20px; margin-bottom: 20px; border-radius: 8px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #ccc; padding: 10px; text-align: center; }
+    th { background: #eee; }
+    .btn { background: #d32f2f; color: #fff; padding: 6px 12px; border: none; cursor: pointer; margin: 2px; }
+    .btn:hover { background: #b71c1c; }
+    input, select { padding: 6px; margin: 4px; }
+    .note { color: #555; font-size: 14px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h1>人手及物資調派系統</h1>
+
+  <!-- 新增組別 -->
+  <div class="section">
+    <h2>新增組別</h2>
+    <form id="addGroupForm">
+      新組別名稱：<input type="text" id="newGroup" required>
+      <button type="submit" class="btn">新增組別</button>
+    </form>
+  </div>
+
+  <!-- 更改組別名稱 -->
+  <div class="section">
+    <h2>更改組別名稱</h2>
+    <form id="renameGroupForm">
+      原組別：
+      <select id="oldGroup"></select>
+      新名稱：<input type="text" id="renameGroup" required>
+      <button type="submit" class="btn">更改名稱</button>
+    </form>
+  </div>
+
+  <!-- 新增人員 -->
+  <div class="section">
+    <h2>新增人員</h2>
+    <form id="addStaffForm">
+      姓名：<input type="text" id="name" required>
+      專長：<input type="text" id="skill" required>
+      分組：
+      <select id="group"></select>
+      <button type="submit" class="btn">新增</button>
+    </form>
+    <p class="note">📱 提示：資料會保存在瀏覽器 localStorage，下次打開依然存在。</p>
+  </div>
+
+  <!-- 人員調派 -->
+  <div class="section">
+    <h2>人員調派</h2>
+    篩選組別：
+    <select id="filterGroup" onchange="filterStaff()">
+      <option value="全部">全部</option>
+    </select>
+    篩選狀態：
+    <select id="filterStatus" onchange="filterStaff()">
+      <option value="全部">全部</option>
+      <option value="待命">待命</option>
+      <option value="工作中">工作中</option>
+      <option value="已完成">已完成</option>
+    </select>
+    <table id="staffTable">
+      <tr><th>姓名</th><th>專長</th><th>分組</th><th>狀態</th><th>操作</th></tr>
+    </table>
+    <button class="btn" onclick="clearAll()">清除所有資料</button>
+  </div>
+
+<script>
+let staffList = JSON.parse(localStorage.getItem("staffList")) || [];
+let groups = JSON.parse(localStorage.getItem("groups")) || ["A組","B組","C組"];
+
+function renderGroups() {
+  const groupSelect = document.getElementById("group");
+  const oldGroupSelect = document.getElementById("oldGroup");
+  const filterGroupSelect = document.getElementById("filterGroup");
+  groupSelect.innerHTML = "";
+  oldGroupSelect.innerHTML = "";
+  filterGroupSelect.innerHTML = "<option value='全部'>全部</option>";
+  groups.forEach(g => {
+    let opt1 = document.createElement("option");
+    opt1.value = g; opt1.innerText = g;
+    groupSelect.appendChild(opt1);
+    let opt2 = document.createElement("option");
+    opt2.value = g; opt2.innerText = g;
+    oldGroupSelect.appendChild(opt2);
+    let opt3 = document.createElement("option");
+    opt3.value = g; opt3.innerText = g;
+    filterGroupSelect.appendChild(opt3);
+  });
+}
+
+function filterStaff() {
+  const selectedGroup = document.getElementById("filterGroup").value;
+  const selectedStatus = document.getElementById("filterStatus").value;
+  const table = document.getElementById("staffTable");
+  table.innerHTML = "<tr><th>姓名</th><th>專長</th><th>分組</th><th>狀態</th><th>操作</th></tr>";
+  staffList.forEach((staff, index) => {
+    if ((selectedGroup === "全部" || staff.group === selectedGroup) &&
+        (selectedStatus === "全部" || staff.status === selectedStatus)) {
+      const row = table.insertRow();
+      row.insertCell(0).innerText = staff.name;
+      row.insertCell(1).innerText = staff.skill;
+      row.insertCell(2).innerText = staff.group;
+      const statusCell = row.insertCell(3);
+      statusCell.innerText = staff.status;
+      const actionCell = row.insertCell(4);
+      actionCell.innerHTML = `
+        <button class="btn" onclick="dispatch(${index})">派遣</button>
+        <button class="btn" onclick="complete(${index})">完成</button>
+        <button class="btn" onclick="standby(${index})">待命</button>
+        <button class="btn" onclick="removeStaff(${index})">刪除</button>
+      `;
+    }
+  });
+}
+
+function addStaff(name, skill, group) {
+  staffList.push({ name, skill, group, status: "待命" });
+  localStorage.setItem("staffList", JSON.stringify(staffList));
+  filterStaff();
+}
+
+function dispatch(index) {
+  staffList[index].status = "工作中";
+  localStorage.setItem("staffList", JSON.stringify(staffList));
+  filterStaff();
+}
+function complete(index) {
+  staffList[index].status = "已完成";
+  localStorage.setItem("staffList", JSON.stringify(staffList));
+  filterStaff();
+}
+function standby(index) {
+  staffList[index].status = "待命";
+  localStorage.setItem("staffList", JSON.stringify(staffList));
+  filterStaff();
+}
+function removeStaff(index) {
+  staffList.splice(index, 1);
+  localStorage.setItem("staffList", JSON.stringify(staffList));
+  filterStaff();
+}
+function clearAll() {
+  staffList = [];
+  groups = ["A組","B組","C組"];
+  localStorage.removeItem("staffList");
+  localStorage.removeItem("groups");
+  renderGroups();
+  filterStaff();
+}
+
+// 新增組別
+document.getElementById("addGroupForm").addEventListener("submit", function(e) {
+  e.preventDefault();
+  const newGroup = document.getElementById("newGroup").value;
+  if (!groups.includes(newGroup)) {
+    groups.push(newGroup);
+    localStorage.setItem("groups", JSON.stringify(groups));
+    renderGroups();
+    filterStaff(); // 確保立即刷新表格
+  }
+  this.reset();
+});
+
+// 更改組別名稱
+document.getElementById("renameGroupForm").addEventListener("submit", function(e) {
+  e.preventDefault();
+  const oldGroup = document.getElementById("oldGroup").value;
+  const newName = document.getElementById("renameGroup").value;
+  const idx = groups.indexOf(oldGroup);
+  if (idx !== -1) {
+    groups[idx] = newName;
+    staff
